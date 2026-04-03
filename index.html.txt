@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Uçak Suni Ufuk Göstergesi</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* Başlat Butonu */
+        #start-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #f1c40f;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 20px;
+            z-index: 100;
+        }
+
+        /* Ana Gösterge Konteyneri */
+        #ai-container {
+            width: 320px;
+            height: 320px;
+            border: 6px solid #444;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+            display: none; /* İzin verilene kadar gizli tutulabilir */
+        }
+
+        #horizon-element {
+            width: 800px; /* Kenarlarda boşluk kalmaması için büyütüldü */
+            height: 800px;
+            position: absolute;
+            top: -240px; 
+            left: -240px;
+            transition: transform 0.1s ease-out;
+        }
+
+        #horizon-colors {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #3399FF 50%, #8E6E46 50%);
+            position: absolute;
+        }
+
+        #pitch-scale {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+        }
+
+        .pitch-line {
+            position: absolute;
+            left: 50%;
+            background-color: white;
+            transform: translateX(-50%);
+        }
+
+        .pitch-line.major { width: 60px; height: 2px; }
+        .pitch-line.minor { width: 30px; height: 1px; }
+
+        .pitch-label {
+            position: absolute;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #roll-scale {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0; left: 0;
+            pointer-events: none;
+        }
+
+        #roll-pointer {
+            width: 0; height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid yellow;
+            position: absolute;
+            top: 10px; left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #aircraft-symbol {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 160px;
+            height: 4px;
+            background-color: yellow;
+        }
+        #aircraft-symbol::before, #aircraft-symbol::after {
+            content: '';
+            position: absolute;
+            width: 6px; height: 16px;
+            background-color: yellow;
+            top: -6px;
+        }
+        #aircraft-symbol::before { left: 40px; }
+        #aircraft-symbol::after { right: 40px; }
+        #aircraft-symbol-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px; height: 10px;
+            background-color: yellow;
+            border-radius: 50%;
+        }
+
+        #info {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="start-btn">Sensörleri Başlat ve Uçuşa Geç</button>
+
+    <div id="ai-container">
+        <div id="horizon-element">
+            <div id="horizon-colors"></div>
+            <div id="pitch-scale"></div>
+        </div>
+
+        <div id="roll-scale">
+            <div id="roll-pointer"></div>
+        </div>
+
+        <div id="aircraft-symbol">
+            <div id="aircraft-symbol-center"></div>
+        </div>
+    </div>
+
+    <div id="info">Pitch: 0° | Roll: 0°</div>
+
+    <script>
+        const horizonElement = document.getElementById('horizon-element');
+        const pitchScale = document.getElementById('pitch-scale');
+        const startBtn = document.getElementById('start-btn');
+        const container = document.getElementById('ai-container');
+        const info = document.getElementById('info');
+
+        // Pitch Ölçeğini Oluştur
+        function createPitchScale() {
+            for (let deg = -40; deg <= 40; deg += 5) {
+                if (deg === 0) continue;
+                const isMajor = deg % 10 === 0;
+                const line = document.createElement('div');
+                line.className = `pitch-line ${isMajor ? 'major' : 'minor'}`;
+                const yPos = 400 - (deg * 5); 
+                line.style.top = `${yPos}px`;
+
+                if (isMajor) {
+                    const labelL = document.createElement('div');
+                    labelL.className = 'pitch-label';
+                    labelL.innerText = Math.abs(deg);
+                    labelL.style.top = `${yPos - 7}px`;
+                    labelL.style.left = `calc(50% - 60px)`;
+                    pitchScale.appendChild(labelL);
+
+                    const labelR = document.createElement('div');
+                    labelR.className = 'pitch-label';
+                    labelR.innerText = Math.abs(deg);
+                    labelR.style.top = `${yPos - 7}px`;
+                    labelR.style.left = `calc(50% + 45px)`;
+                    pitchScale.appendChild(labelR);
+                }
+                pitchScale.appendChild(line);
+            }
+        }
+        createPitchScale();
+
+        // Sensör İşleme Fonksiyonu
+        function handleMotion(event) {
+            let roll = event.gamma;  // Sağ-sol yatış
+            let pitch = event.beta;  // Ön-arka eğim
+
+            if (roll === null || pitch === null) return;
+
+            // Ufuk göstergesi mantığı: Cihaz öne eğilirse (pitch artar), mavi gökyüzü aşağı iner.
+            // Bu yüzden pitch değerini dikey kaydırma (translateY) olarak kullanıyoruz.
+            let pitchOffset = pitch * 5; 
+            
+            horizonElement.style.transform = `rotate(${-roll}deg) translateY(${pitchOffset}px)`;
+            
+            info.innerText = `Pitch: ${Math.round(pitch)}° | Roll: ${Math.round(roll)}°`;
+        }
+
+        // Başlatma ve İzin Alma Butonu
+        startBtn.addEventListener('click', () => {
+            // iOS 13+ için izin isteme
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleMotion);
+                            startBtn.style.display = 'none';
+                            container.style.display = 'block';
+                        } else {
+                            alert("Sensör izni reddedildi.");
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Android veya eski iOS
+                window.addEventListener('deviceorientation', handleMotion);
+                startBtn.style.display = 'none';
+                container.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
