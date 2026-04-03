@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hamza PFD - Fixed Horizon</title>
+    <title>Hamza PFD - Smooth Edition</title>
     <style>
         body {
             margin: 0; padding: 0;
@@ -27,11 +27,11 @@
             overflow: hidden;
         }
 
-        /* Ufuk Elemanı - Artık Sadece Yukarı Aşağı Kayacak */
+        /* Ufuk Elemanı */
         #horizon-element {
             width: 100%; height: 600%;
             position: absolute; top: -250%; left: 0;
-            transition: transform 0.05s linear;
+            will-change: transform; /* Performans için önemli */
         }
 
         #horizon-colors {
@@ -40,26 +40,16 @@
             position: absolute;
         }
 
-        /* Derece Çizgileri */
         .pitch-line {
-            position: absolute;
-            left: 50%;
-            width: 100px;
-            height: 2px;
-            background-color: white;
-            transform: translateX(-50%);
+            position: absolute; left: 50%; width: 100px; height: 2px;
+            background-color: white; transform: translateX(-50%);
         }
 
         .pitch-label {
-            position: absolute;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            width: 40px;
-            text-align: center;
+            position: absolute; color: white; font-size: 16px;
+            font-weight: bold; width: 40px; text-align: center;
         }
 
-        /* Sabit Yan Göstergeler */
         .tape-container {
             position: absolute; width: 80px; height: 200px;
             background: rgba(0, 0, 0, 0.7); border: 1px solid #555;
@@ -70,13 +60,12 @@
         #alt-tape { right: 10px; top: 50%; transform: translateY(-50%); }
         .tape-val { font-size: 26px; font-weight: bold; color: #00FF00; }
 
-        /* Sabit Uçak Sembolü (Sarı) */
         #aircraft-ref {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             width: 180px; height: 4px; z-index: 100;
         }
-        .wing { position: absolute; background: #ffff00; height: 5px; width: 70px; box-shadow: 0 0 5px #000; }
+        .wing { position: absolute; background: #ffff00; height: 5px; width: 70px; }
         .left-wing { left: 0; }
         .right-wing { right: 0; }
         .nose-dot { position: absolute; left: 85px; top: -3px; width: 12px; height: 12px; background: #ffff00; border-radius: 50%; }
@@ -96,13 +85,11 @@
         <div id="speed-tape" class="tape-container">
             <span style="font-size: 12px; color: #aaa;">SPD</span>
             <span id="val-speed" class="tape-val">240</span>
-            <span style="font-size: 10px; color: #aaa;">KTS</span>
         </div>
 
         <div id="alt-tape" class="tape-container">
             <span style="font-size: 12px; color: #aaa;">ALT</span>
             <span id="val-alt" class="tape-val">10500</span>
-            <span style="font-size: 10px; color: #aaa;">FT</span>
         </div>
 
         <div id="aircraft-ref">
@@ -118,18 +105,17 @@
         const startBtn = document.getElementById('start-btn');
         const screen = document.getElementById('pfd-screen');
 
-        // Pitch Ladder Oluştur (10, 20, 30, 40 dereceler)
+        let targetPitch = 0;   // Sensörden gelen gerçek değer
+        let currentPitch = 0;  // Ekranda görünen yumuşatılmış değer
+        const smoothing = 0.1; // YUMUŞATMA KATSAYISI (0.01 ile 1 arası. Küçüldükçe yumuşar ama gecikme artar)
+
         function generatePitchScale() {
             for (let i = -40; i <= 40; i += 10) {
                 if (i === 0) continue; 
-
                 const line = document.createElement('div');
                 line.className = 'pitch-line';
-                // Her derece için 8 piksellik boşluk
                 const yOffset = i * 8;
                 line.style.top = `calc(50% - ${yOffset}px)`;
-
-                // Sayıları ekle (Sol ve Sağ)
                 [-75, 45].forEach(x => {
                     const label = document.createElement('div');
                     label.className = 'pitch-label';
@@ -138,49 +124,52 @@
                     label.style.left = `calc(50% + ${x}px)`;
                     pitchScale.appendChild(label);
                 });
-
                 pitchScale.appendChild(line);
             }
         }
-
         generatePitchScale();
 
-        function handleOrientation(event) {
-            let beta = event.beta; // Telefonun dikey eğimi
+        // Sensör verisini sadece hedef değer olarak alıyoruz
+        window.addEventListener('deviceorientation', (event) => {
+            if (event.beta !== null) {
+                targetPitch = (event.beta - 90) * 8; // Hedef piksel konumu
+            }
+        });
 
-            if (beta === null) return;
+        // ÇİZİM DÖNGÜSÜ (Animasyonu akıcı yapan ana kısım)
+        function update() {
+            // LERP Formülü: Mevcut değer ile hedef değer arasındaki farkın bir kısmını ekle
+            // Bu formül titreşimi emer
+            let diff = targetPitch - currentPitch;
+            currentPitch += diff * smoothing;
 
-            // --- KALİBRASYON ---
-            // Telefon tam dik (duvara bakar gibi) iken beta ~90 derecedir. 
-            // Bu konumu 0 (ufuk tam ortada) yapıyoruz.
-            let adjustedPitch = beta - 90;
+            // Görseli güncelle
+            horizon.style.transform = `translateY(${currentPitch}px)`;
 
-            // Dikey kaydırma miktarı (Hassasiyet: 8)
-            let pitchPx = adjustedPitch * 8; 
+            // Sayıları güncelle (şov amaçlı)
+            document.getElementById('val-alt').innerText = 10500 - Math.round(currentPitch * 1.5);
 
-            // DİKKAT: Rotate (Roll) kaldırıldı! Sadece yukarı-aşağı (translateY)
-            horizon.style.transform = `translateY(${pitchPx}px)`;
-
-            // Sayıları güncelle (Simülasyon efekti)
-            document.getElementById('val-speed').innerText = 240 + (Math.random() > 0.5 ? 1 : 0);
-            document.getElementById('val-alt').innerText = 10500 - Math.round(adjustedPitch * 12);
+            // Bir sonraki ekran yenilemesinde tekrar çalış
+            requestAnimationFrame(update);
         }
 
         startBtn.addEventListener('click', () => {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission().then(s => {
                     if (s === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                        startBtn.style.display = 'none';
-                        screen.style.display = 'block';
+                        startApp();
                     }
                 });
             } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                startBtn.style.display = 'none';
-                screen.style.display = 'block';
+                startApp();
             }
         });
+
+        function startApp() {
+            startBtn.style.display = 'none';
+            screen.style.display = 'block';
+            update(); // Animasyon döngüsünü başlat
+        }
     </script>
 </body>
 </html>
