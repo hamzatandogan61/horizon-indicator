@@ -3,232 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Uçak Suni Ufuk Göstergesi</title>
+    <title>Hamza PFD - Pro Edition</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #111;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-            color: white;
+            margin: 0; padding: 0;
+            background-color: #000;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            height: 100vh; font-family: Arial, sans-serif;
+            overflow: hidden; color: #fff;
         }
 
-        /* Başlat Butonu */
         #start-btn {
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #f1c40f;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-bottom: 20px;
-            z-index: 100;
+            padding: 15px 30px; font-size: 18px;
+            background-color: #333; border: 2px solid #00FF00;
+            color: #00FF00; border-radius: 5px;
+            cursor: pointer; font-weight: bold; z-index: 100;
         }
 
-        /* Ana Gösterge Konteyneri */
-        #ai-container {
-            width: 320px;
-            height: 320px;
-            border: 6px solid #444;
-            border-radius: 50%;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        #pfd-screen {
+            width: 100vw; height: 100vh;
+            position: relative; display: none;
             overflow: hidden;
-            display: none; /* İzin verilene kadar gizli tutulabilir */
         }
 
+        /* Hareketli Ufuk ve Derece Çizgileri */
         #horizon-element {
-            width: 800px; /* Kenarlarda boşluk kalmaması için büyütüldü */
-            height: 800px;
-            position: absolute;
-            top: -240px; 
-            left: -240px;
-            transition: transform 0.1s ease-out;
+            width: 300%; height: 600%;
+            position: absolute; top: -250%; left: -100%;
+            transition: transform 0.05s linear;
         }
 
         #horizon-colors {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, #3399FF 50%, #8E6E46 50%);
+            width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #1e528e 50%, #5a3e2b 50%);
             position: absolute;
         }
 
-        #pitch-scale {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0; left: 0;
-        }
-
+        /* PITCH LADDER (Derece Çizgileri) */
         .pitch-line {
             position: absolute;
             left: 50%;
+            width: 80px;
+            height: 2px;
             background-color: white;
             transform: translateX(-50%);
         }
 
-        .pitch-line.major { width: 60px; height: 2px; }
-        .pitch-line.minor { width: 30px; height: 1px; }
-
         .pitch-label {
             position: absolute;
             color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        #roll-scale {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0; left: 0;
-            pointer-events: none;
-        }
-
-        #roll-pointer {
-            width: 0; height: 0;
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-top: 15px solid yellow;
-            position: absolute;
-            top: 10px; left: 50%;
-            transform: translateX(-50%);
-        }
-
-        #aircraft-symbol {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 160px;
-            height: 4px;
-            background-color: yellow;
-        }
-        #aircraft-symbol::before, #aircraft-symbol::after {
-            content: '';
-            position: absolute;
-            width: 6px; height: 16px;
-            background-color: yellow;
-            top: -6px;
-        }
-        #aircraft-symbol::before { left: 40px; }
-        #aircraft-symbol::after { right: 40px; }
-        #aircraft-symbol-center {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 10px; height: 10px;
-            background-color: yellow;
-            border-radius: 50%;
-        }
-
-        #info {
-            margin-top: 20px;
             font-size: 14px;
-            color: #aaa;
+            font-weight: bold;
+            width: 30px;
+            text-align: center;
         }
+
+        /* Yan Teypler (Hız ve İrtifa) */
+        .tape-container {
+            position: absolute; width: 70px; height: 200px;
+            background: rgba(0, 0, 0, 0.7); border: 1px solid #777;
+            z-index: 50; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        #speed-tape { left: 10px; top: 50%; transform: translateY(-50%); }
+        #alt-tape { right: 10px; top: 50%; transform: translateY(-50%); }
+        .tape-val { font-size: 24px; font-weight: bold; color: #00FF00; }
+
+        /* Sabit Uçak Sembolü */
+        #aircraft-ref {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 160px; height: 4px; z-index: 100;
+        }
+        .wing { position: absolute; background: #ffff00; height: 4px; width: 60px; box-shadow: 0 0 4px #000; }
+        .left-wing { left: 0; }
+        .right-wing { right: 0; }
+        .nose-dot { position: absolute; left: 75px; top: -3px; width: 10px; height: 10px; background: #ffff00; border-radius: 50%; }
+
     </style>
 </head>
 <body>
 
-    <button id="start-btn">Sensörleri Başlat ve Uçuşa Geç</button>
+    <button id="start-btn">SİSTEMLERİ BAŞLAT</button>
 
-    <div id="ai-container">
+    <div id="pfd-screen">
         <div id="horizon-element">
             <div id="horizon-colors"></div>
             <div id="pitch-scale"></div>
         </div>
 
-        <div id="roll-scale">
-            <div id="roll-pointer"></div>
+        <div id="speed-tape" class="tape-container">
+            <span style="font-size: 10px;">SPD</span>
+            <span id="val-speed" class="tape-val">240</span>
         </div>
 
-        <div id="aircraft-symbol">
-            <div id="aircraft-symbol-center"></div>
+        <div id="alt-tape" class="tape-container">
+            <span style="font-size: 10px;">ALT</span>
+            <span id="val-alt" class="tape-val">10500</span>
+        </div>
+
+        <div id="aircraft-ref">
+            <div class="wing left-wing"></div>
+            <div class="nose-dot"></div>
+            <div class="wing right-wing"></div>
         </div>
     </div>
 
-    <div id="info">Pitch: 0° | Roll: 0°</div>
-
     <script>
-        const horizonElement = document.getElementById('horizon-element');
+        const horizon = document.getElementById('horizon-element');
         const pitchScale = document.getElementById('pitch-scale');
         const startBtn = document.getElementById('start-btn');
-        const container = document.getElementById('ai-container');
-        const info = document.getElementById('info');
+        const screen = document.getElementById('pfd-screen');
 
-        // Pitch Ölçeğini Oluştur
-        function createPitchScale() {
-            for (let deg = -40; deg <= 40; deg += 5) {
-                if (deg === 0) continue;
-                const isMajor = deg % 10 === 0;
+        // PITCH LADDER OLUŞTURUCU (10, 20, 30... Dereceler)
+        function generatePitchScale() {
+            // Merkezin (0 derece) konumu ekranın tam ortasıdır
+            const centerOffset = window.innerHeight * 3; // horizon-element'in yarısı (basitleştirilmiş)
+            
+            for (let i = -50; i <= 50; i += 10) {
+                if (i === 0) continue; // Ufuk çizgisi zaten gradient'in ortası
+
                 const line = document.createElement('div');
-                line.className = `pitch-line ${isMajor ? 'major' : 'minor'}`;
-                const yPos = 400 - (deg * 5); 
-                line.style.top = `${yPos}px`;
+                line.className = 'pitch-line';
+                // 1 derece = 8 piksel kaydırma (CSS'teki hassasiyetle aynı olmalı)
+                const yPos = 50 - (i * 0.4); // % cinsinden pozisyon (yaklaşık)
+                
+                // Daha hassas piksel bazlı yerleşim
+                const topVal = `calc(50% - ${i * 8}px)`; 
+                line.style.top = topVal;
 
-                if (isMajor) {
-                    const labelL = document.createElement('div');
-                    labelL.className = 'pitch-label';
-                    labelL.innerText = Math.abs(deg);
-                    labelL.style.top = `${yPos - 7}px`;
-                    labelL.style.left = `calc(50% - 60px)`;
-                    pitchScale.appendChild(labelL);
+                // Sol ve Sağ Sayılar
+                [-60, 45].forEach(xOffset => {
+                    const label = document.createElement('div');
+                    label.className = 'pitch-label';
+                    label.innerText = Math.abs(i);
+                    label.style.top = `calc(50% - ${i * 8 + 10}px)`;
+                    label.style.left = `calc(50% + ${xOffset}px)`;
+                    pitchScale.appendChild(label);
+                });
 
-                    const labelR = document.createElement('div');
-                    labelR.className = 'pitch-label';
-                    labelR.innerText = Math.abs(deg);
-                    labelR.style.top = `${yPos - 7}px`;
-                    labelR.style.left = `calc(50% + 45px)`;
-                    pitchScale.appendChild(labelR);
-                }
                 pitchScale.appendChild(line);
             }
         }
-        createPitchScale();
 
-        // Sensör İşleme Fonksiyonu
-        function handleMotion(event) {
-            let roll = event.gamma;  // Sağ-sol yatış
-            let pitch = event.beta;  // Ön-arka eğim
+        generatePitchScale();
 
-            if (roll === null || pitch === null) return;
+        function handleOrientation(event) {
+            let roll = event.gamma; 
+            let beta = event.beta; // Telefonun dikey eğimi
 
-            // Ufuk göstergesi mantığı: Cihaz öne eğilirse (pitch artar), mavi gökyüzü aşağı iner.
-            // Bu yüzden pitch değerini dikey kaydırma (translateY) olarak kullanıyoruz.
-            let pitchOffset = pitch * 5; 
-            
-            horizonElement.style.transform = `rotate(${-roll}deg) translateY(${pitchOffset}px)`;
-            
-            info.innerText = `Pitch: ${Math.round(pitch)}° | Roll: ${Math.round(roll)}°`;
+            if (roll === null || beta === null) return;
+
+            // --- KALİBRASYON ---
+            // Telefon tam karşıya bakarken beta ~90 derecedir. Bunu 0 yapıyoruz.
+            let adjustedPitch = beta - 90;
+
+            // Hassasiyet çarpanı (8)
+            let pitchPx = adjustedPitch * 8; 
+
+            // Hem döndür hem dikey kaydır
+            horizon.style.transform = `rotate(${-roll}deg) translateY(${pitchPx}px)`;
+
+            // Görsel değerleri güncelle
+            document.getElementById('val-speed').innerText = 240 + Math.round(Math.random());
+            document.getElementById('val-alt').innerText = 10500 - Math.round(adjustedPitch * 15);
         }
 
-        // Başlatma ve İzin Alma Butonu
         startBtn.addEventListener('click', () => {
-            // iOS 13+ için izin isteme
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', handleMotion);
-                            startBtn.style.display = 'none';
-                            container.style.display = 'block';
-                        } else {
-                            alert("Sensör izni reddedildi.");
-                        }
-                    })
-                    .catch(console.error);
+                DeviceOrientationEvent.requestPermission().then(s => {
+                    if (s === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        startBtn.style.display = 'none';
+                        screen.style.display = 'block';
+                    }
+                });
             } else {
-                // Android veya eski iOS
-                window.addEventListener('deviceorientation', handleMotion);
+                window.addEventListener('deviceorientation', handleOrientation);
                 startBtn.style.display = 'none';
-                container.style.display = 'block';
+                screen.style.display = 'block';
             }
         });
     </script>
