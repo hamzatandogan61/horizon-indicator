@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hamza PFD - Pro Edition</title>
+    <title>Hamza PFD - Fixed Horizon</title>
     <style>
         body {
             margin: 0; padding: 0;
@@ -27,10 +27,10 @@
             overflow: hidden;
         }
 
-        /* Hareketli Ufuk ve Derece Çizgileri */
+        /* Ufuk Elemanı - Artık Sadece Yukarı Aşağı Kayacak */
         #horizon-element {
-            width: 300%; height: 600%;
-            position: absolute; top: -250%; left: -100%;
+            width: 100%; height: 600%;
+            position: absolute; top: -250%; left: 0;
             transition: transform 0.05s linear;
         }
 
@@ -40,11 +40,11 @@
             position: absolute;
         }
 
-        /* PITCH LADDER (Derece Çizgileri) */
+        /* Derece Çizgileri */
         .pitch-line {
             position: absolute;
             left: 50%;
-            width: 80px;
+            width: 100px;
             height: 2px;
             background-color: white;
             transform: translateX(-50%);
@@ -53,33 +53,33 @@
         .pitch-label {
             position: absolute;
             color: white;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
-            width: 30px;
+            width: 40px;
             text-align: center;
         }
 
-        /* Yan Teypler (Hız ve İrtifa) */
+        /* Sabit Yan Göstergeler */
         .tape-container {
-            position: absolute; width: 70px; height: 200px;
-            background: rgba(0, 0, 0, 0.7); border: 1px solid #777;
+            position: absolute; width: 80px; height: 200px;
+            background: rgba(0, 0, 0, 0.7); border: 1px solid #555;
             z-index: 50; display: flex; flex-direction: column;
             align-items: center; justify-content: center;
         }
         #speed-tape { left: 10px; top: 50%; transform: translateY(-50%); }
         #alt-tape { right: 10px; top: 50%; transform: translateY(-50%); }
-        .tape-val { font-size: 24px; font-weight: bold; color: #00FF00; }
+        .tape-val { font-size: 26px; font-weight: bold; color: #00FF00; }
 
-        /* Sabit Uçak Sembolü */
+        /* Sabit Uçak Sembolü (Sarı) */
         #aircraft-ref {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 160px; height: 4px; z-index: 100;
+            width: 180px; height: 4px; z-index: 100;
         }
-        .wing { position: absolute; background: #ffff00; height: 4px; width: 60px; box-shadow: 0 0 4px #000; }
+        .wing { position: absolute; background: #ffff00; height: 5px; width: 70px; box-shadow: 0 0 5px #000; }
         .left-wing { left: 0; }
         .right-wing { right: 0; }
-        .nose-dot { position: absolute; left: 75px; top: -3px; width: 10px; height: 10px; background: #ffff00; border-radius: 50%; }
+        .nose-dot { position: absolute; left: 85px; top: -3px; width: 12px; height: 12px; background: #ffff00; border-radius: 50%; }
 
     </style>
 </head>
@@ -94,13 +94,15 @@
         </div>
 
         <div id="speed-tape" class="tape-container">
-            <span style="font-size: 10px;">SPD</span>
+            <span style="font-size: 12px; color: #aaa;">SPD</span>
             <span id="val-speed" class="tape-val">240</span>
+            <span style="font-size: 10px; color: #aaa;">KTS</span>
         </div>
 
         <div id="alt-tape" class="tape-container">
-            <span style="font-size: 10px;">ALT</span>
+            <span style="font-size: 12px; color: #aaa;">ALT</span>
             <span id="val-alt" class="tape-val">10500</span>
+            <span style="font-size: 10px; color: #aaa;">FT</span>
         </div>
 
         <div id="aircraft-ref">
@@ -116,30 +118,24 @@
         const startBtn = document.getElementById('start-btn');
         const screen = document.getElementById('pfd-screen');
 
-        // PITCH LADDER OLUŞTURUCU (10, 20, 30... Dereceler)
+        // Pitch Ladder Oluştur (10, 20, 30, 40 dereceler)
         function generatePitchScale() {
-            // Merkezin (0 derece) konumu ekranın tam ortasıdır
-            const centerOffset = window.innerHeight * 3; // horizon-element'in yarısı (basitleştirilmiş)
-            
-            for (let i = -50; i <= 50; i += 10) {
-                if (i === 0) continue; // Ufuk çizgisi zaten gradient'in ortası
+            for (let i = -40; i <= 40; i += 10) {
+                if (i === 0) continue; 
 
                 const line = document.createElement('div');
                 line.className = 'pitch-line';
-                // 1 derece = 8 piksel kaydırma (CSS'teki hassasiyetle aynı olmalı)
-                const yPos = 50 - (i * 0.4); // % cinsinden pozisyon (yaklaşık)
-                
-                // Daha hassas piksel bazlı yerleşim
-                const topVal = `calc(50% - ${i * 8}px)`; 
-                line.style.top = topVal;
+                // Her derece için 8 piksellik boşluk
+                const yOffset = i * 8;
+                line.style.top = `calc(50% - ${yOffset}px)`;
 
-                // Sol ve Sağ Sayılar
-                [-60, 45].forEach(xOffset => {
+                // Sayıları ekle (Sol ve Sağ)
+                [-75, 45].forEach(x => {
                     const label = document.createElement('div');
                     label.className = 'pitch-label';
                     label.innerText = Math.abs(i);
-                    label.style.top = `calc(50% - ${i * 8 + 10}px)`;
-                    label.style.left = `calc(50% + ${xOffset}px)`;
+                    label.style.top = `calc(50% - ${yOffset + 10}px)`;
+                    label.style.left = `calc(50% + ${x}px)`;
                     pitchScale.appendChild(label);
                 });
 
@@ -150,24 +146,24 @@
         generatePitchScale();
 
         function handleOrientation(event) {
-            let roll = event.gamma; 
             let beta = event.beta; // Telefonun dikey eğimi
 
-            if (roll === null || beta === null) return;
+            if (beta === null) return;
 
             // --- KALİBRASYON ---
-            // Telefon tam karşıya bakarken beta ~90 derecedir. Bunu 0 yapıyoruz.
+            // Telefon tam dik (duvara bakar gibi) iken beta ~90 derecedir. 
+            // Bu konumu 0 (ufuk tam ortada) yapıyoruz.
             let adjustedPitch = beta - 90;
 
-            // Hassasiyet çarpanı (8)
+            // Dikey kaydırma miktarı (Hassasiyet: 8)
             let pitchPx = adjustedPitch * 8; 
 
-            // Hem döndür hem dikey kaydır
-            horizon.style.transform = `rotate(${-roll}deg) translateY(${pitchPx}px)`;
+            // DİKKAT: Rotate (Roll) kaldırıldı! Sadece yukarı-aşağı (translateY)
+            horizon.style.transform = `translateY(${pitchPx}px)`;
 
-            // Görsel değerleri güncelle
-            document.getElementById('val-speed').innerText = 240 + Math.round(Math.random());
-            document.getElementById('val-alt').innerText = 10500 - Math.round(adjustedPitch * 15);
+            // Sayıları güncelle (Simülasyon efekti)
+            document.getElementById('val-speed').innerText = 240 + (Math.random() > 0.5 ? 1 : 0);
+            document.getElementById('val-alt').innerText = 10500 - Math.round(adjustedPitch * 12);
         }
 
         startBtn.addEventListener('click', () => {
